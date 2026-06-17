@@ -94,26 +94,27 @@ const getResolutionTrend = (tickets: Ticket[], startDate?: string, endDate?: str
     end = dayjs();
   }
   
-  const days = end.diff(start, 'day') + 1;
-  const maxDays = 60;
-  const step = Math.max(1, Math.ceil(days / maxDays));
+  const totalDays = end.diff(start, 'day') + 1;
+  const maxDataPoints = 60;
+  const step = Math.max(1, Math.ceil(totalDays / maxDataPoints));
   
-  for (let i = 0; i < days; i += step) {
+  for (let i = 0; i < totalDays; i += step) {
     const date = start.add(i, 'day');
     const dateStr = date.format('MM-DD');
     dateMap.set(dateStr, 0);
   }
   
   resolvedTickets.forEach(ticket => {
-    const ticketDate = dayjs(ticket.resolvedAt!);
-    if (ticketDate.isBefore(start) || ticketDate.isAfter(end)) return;
+    const resolveDate = dayjs(ticket.resolvedAt!);
+    const dayDiff = resolveDate.diff(start, 'day');
     
-    const dayDiff = ticketDate.diff(start, 'day');
-    const adjustedDay = Math.floor(dayDiff / step) * step;
-    const date = start.add(adjustedDay, 'day').format('MM-DD');
-    
-    if (dateMap.has(date)) {
-      dateMap.set(date, (dateMap.get(date) || 0) + 1);
+    if (dayDiff >= 0 && dayDiff < totalDays) {
+      const adjustedDay = Math.floor(dayDiff / step) * step;
+      const date = start.add(adjustedDay, 'day').format('MM-DD');
+      
+      if (dateMap.has(date)) {
+        dateMap.set(date, (dateMap.get(date) || 0) + 1);
+      }
     }
   });
   

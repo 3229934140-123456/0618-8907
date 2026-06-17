@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Card, Row, Col, Statistic, DatePicker, Spin, Button } from 'antd';
 import {
   FileTextOutlined,
@@ -24,35 +24,46 @@ const { RangePicker } = DatePicker;
 const Statistics: React.FC = () => {
   const { statistics, loading, fetchStatistics } = useStatisticsStore();
   
-  const defaultStartDate = dayjs().subtract(29, 'day').startOf('day');
-  const defaultEndDate = dayjs().endOf('day');
+  const defaultRange: [Dayjs, Dayjs] = useMemo(() => ([
+    dayjs().subtract(29, 'day').startOf('day'),
+    dayjs().endOf('day'),
+  ]), []);
+
+  const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null] | null>(defaultRange);
+
+  const fetchWithDateRange = (range: [Dayjs | null, Dayjs | null] | null) => {
+    let start: Dayjs;
+    let end: Dayjs;
+    
+    if (range && range[0] && range[1]) {
+      start = range[0].startOf('day');
+      end = range[1].endOf('day');
+    } else {
+      start = defaultRange[0];
+      end = defaultRange[1];
+    }
+    
+    fetchStatistics(start.toISOString(), end.toISOString());
+  };
 
   useEffect(() => {
-    fetchStatistics(
-      defaultStartDate.toISOString(),
-      defaultEndDate.toISOString()
-    );
+    fetchWithDateRange(defaultRange);
   }, [fetchStatistics]);
 
-  const handleDateChange = (dates: [Dayjs | null, Dayjs | null]) => {
-    if (dates[0] && dates[1]) {
-      fetchStatistics(
-        dates[0].startOf('day').toISOString(),
-        dates[1].endOf('day').toISOString()
-      );
-    } else {
-      fetchStatistics(
-        defaultStartDate.toISOString(),
-        defaultEndDate.toISOString()
-      );
+  const handleDateChange = (dates: [Dayjs | null, Dayjs | null] | null, dateStrings: [string, string]) => {
+    let nextRange: [Dayjs | null, Dayjs | null] | null = dates;
+    
+    if (!dates || (!dates[0] || !dates[1])) {
+      nextRange = defaultRange;
     }
+    
+    setDateRange(nextRange);
+    fetchWithDateRange(nextRange);
   };
 
   const handleRefresh = () => {
-    fetchStatistics(
-      defaultStartDate.toISOString(),
-      defaultEndDate.toISOString()
-    );
+    setDateRange(defaultRange);
+    fetchWithDateRange(defaultRange);
   };
 
   const typeChartOption = {
@@ -227,7 +238,7 @@ const Statistics: React.FC = () => {
           </div>
           <div className="flex items-center gap-3">
             <RangePicker
-              defaultValue={[dayjs().subtract(30, 'day'), dayjs()]}
+              value={dateRange as [Dayjs | null, Dayjs | null]}
               onChange={handleDateChange}
               allowClear
               className="bg-white/20"
@@ -239,9 +250,14 @@ const Statistics: React.FC = () => {
         </div>
         <div className="mt-4 pt-4 border-t border-white/20">
           <p className="text-sm text-blue-100">
-            数据更新时间：{dayjs().format('YYYY-MM-DD HH:mm:ss')}
+            📅 统计周期：{dateRange && dateRange[0] && dateRange[1] 
+              ? `${dateRange[0].format('YYYY-MM-DD')} ~ ${dateRange[1].format('YYYY-MM-DD')}`
+              : `${defaultRange[0].format('YYYY-MM-DD')} ~ ${defaultRange[1].format('YYYY-MM-DD')}`
+            }
             <span className="ml-4">•</span>
-            <span className="ml-4">统计周期内共处理 {statistics.totalTickets} 个工单</span>
+            <span className="ml-4">更新时间：{dayjs().format('YYYY-MM-DD HH:mm:ss')}</span>
+            <span className="ml-4">•</span>
+            <span className="ml-4">周期内共收到 {statistics.totalTickets} 个工单</span>
           </p>
         </div>
       </div>
