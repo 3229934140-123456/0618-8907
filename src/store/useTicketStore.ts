@@ -25,7 +25,7 @@ interface TicketState {
   claimTicket: (id: string, assigneeId: string, assigneeName: string, operatorId: string, operatorName: string, operatorRole: string) => Ticket | undefined;
   assignTicket: (id: string, assigneeId: string, assigneeName: string, operatorId: string, operatorName: string, operatorRole: string) => Ticket | undefined;
   resolveTicket: (id: string, resolution: string, operatorId: string, operatorName: string, operatorRole: string) => Ticket | undefined;
-  closeTicket: (id: string, rating?: number, comment?: string) => Ticket | undefined;
+  closeTicket: (id: string, operatorId: string, operatorName: string, operatorRole: string, rating?: number, comment?: string) => Ticket | undefined;
   addMessage: (ticketId: string, message: Omit<Message, 'id' | 'ticketId' | 'createdAt'>) => Message | undefined;
   batchResetPassword: (ticketIds: string[], operatorId: string, operatorName: string, operatorRole: string) => { success: number; failed: number };
   batchAssign: (ticketIds: string[], assigneeId: string, assigneeName: string, operatorId: string, operatorName: string, operatorRole: string) => { success: number; failed: number };
@@ -187,7 +187,7 @@ export const useTicketStore = create<TicketState>((set, get) => ({
     return result;
   },
 
-  closeTicket: (id, rating, comment) => {
+  closeTicket: (id, operatorId, operatorName, operatorRole, rating, comment) => {
     const ticket = storage.getTicketById(id);
     const result = get().updateTicket(id, {
       status: 'closed',
@@ -197,10 +197,10 @@ export const useTicketStore = create<TicketState>((set, get) => ({
       get().addActionLog(
         id,
         'closed',
-        ticket.creatorId,
-        ticket.creatorName,
-        'employee',
-        `${ticket.creatorName}确认问题已解决，关闭工单`
+        operatorId,
+        operatorName,
+        operatorRole,
+        `${operatorName}确认问题已解决，关闭工单`
       );
     }
     return result;

@@ -23,9 +23,15 @@ const { RangePicker } = DatePicker;
 
 const Statistics: React.FC = () => {
   const { statistics, loading, fetchStatistics } = useStatisticsStore();
+  
+  const defaultStartDate = dayjs().subtract(29, 'day').startOf('day');
+  const defaultEndDate = dayjs().endOf('day');
 
   useEffect(() => {
-    fetchStatistics();
+    fetchStatistics(
+      defaultStartDate.toISOString(),
+      defaultEndDate.toISOString()
+    );
   }, [fetchStatistics]);
 
   const handleDateChange = (dates: [Dayjs | null, Dayjs | null]) => {
@@ -35,12 +41,18 @@ const Statistics: React.FC = () => {
         dates[1].endOf('day').toISOString()
       );
     } else {
-      fetchStatistics();
+      fetchStatistics(
+        defaultStartDate.toISOString(),
+        defaultEndDate.toISOString()
+      );
     }
   };
 
   const handleRefresh = () => {
-    fetchStatistics();
+    fetchStatistics(
+      defaultStartDate.toISOString(),
+      defaultEndDate.toISOString()
+    );
   };
 
   const typeChartOption = {

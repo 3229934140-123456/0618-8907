@@ -135,7 +135,7 @@ const TicketDetail: React.FC = () => {
     if (!ticket || !user) return;
     setLoading(true);
     try {
-      const updated = closeTicket(ticket.id, values.rating, values.comment);
+      const updated = closeTicket(ticket.id, user.id, user.name, user.role, values.rating, values.comment);
       if (updated) {
         setTicket(updated);
         message.success('工单已关闭');

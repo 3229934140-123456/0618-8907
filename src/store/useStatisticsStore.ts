@@ -75,25 +75,43 @@ const classifyIssue = (title: string, description: string): string => {
 const getResolutionTrend = (tickets: Ticket[], startDate?: string, endDate?: string) => {
   const resolvedTickets = tickets.filter(t => t.resolvedAt);
   
-  let filtered = resolvedTickets;
-  if (startDate) {
-    filtered = filtered.filter(t => t.resolvedAt! >= startDate);
-  }
-  if (endDate) {
-    filtered = filtered.filter(t => t.resolvedAt! <= endDate);
-  }
-  
   const dateMap = new Map<string, number>();
-  const days = 7;
-  const today = dayjs();
   
-  for (let i = days - 1; i >= 0; i--) {
-    const date = today.subtract(i, 'day').format('MM-DD');
-    dateMap.set(date, 0);
+  let start: dayjs.Dayjs;
+  let end: dayjs.Dayjs;
+  
+  if (startDate && endDate) {
+    start = dayjs(startDate);
+    end = dayjs(endDate);
+  } else if (startDate) {
+    start = dayjs(startDate);
+    end = dayjs();
+  } else if (endDate) {
+    start = dayjs(endDate).subtract(29, 'day');
+    end = dayjs(endDate);
+  } else {
+    start = dayjs().subtract(29, 'day');
+    end = dayjs();
   }
   
-  filtered.forEach(ticket => {
-    const date = dayjs(ticket.resolvedAt!).format('MM-DD');
+  const days = end.diff(start, 'day') + 1;
+  const maxDays = 60;
+  const step = Math.max(1, Math.ceil(days / maxDays));
+  
+  for (let i = 0; i < days; i += step) {
+    const date = start.add(i, 'day');
+    const dateStr = date.format('MM-DD');
+    dateMap.set(dateStr, 0);
+  }
+  
+  resolvedTickets.forEach(ticket => {
+    const ticketDate = dayjs(ticket.resolvedAt!);
+    if (ticketDate.isBefore(start) || ticketDate.isAfter(end)) return;
+    
+    const dayDiff = ticketDate.diff(start, 'day');
+    const adjustedDay = Math.floor(dayDiff / step) * step;
+    const date = start.add(adjustedDay, 'day').format('MM-DD');
+    
     if (dateMap.has(date)) {
       dateMap.set(date, (dateMap.get(date) || 0) + 1);
     }
