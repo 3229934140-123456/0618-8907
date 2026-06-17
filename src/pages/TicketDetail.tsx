@@ -37,7 +37,7 @@ import {
   PriorityBadge,
   TypeBadge,
 } from '../components/Ticket/StatusBadge';
-import { Ticket, TicketStatus, TicketPriority, TicketType } from '../types';
+import { Ticket, TicketStatus, TicketPriority, TicketType, TicketActionLog, TICKET_ACTION_LABELS, TICKET_ACTION_COLORS, TICKET_STATUS_LABELS } from '../types';
 import dayjs from 'dayjs';
 import { storage } from '../services/storage';
 
@@ -49,7 +49,7 @@ const TicketDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const { getTicket, claimTicket, assignTicket, resolveTicket, closeTicket, addMessage } = useTicketStore();
+  const { getTicket, claimTicket, assignTicket, resolveTicket, closeTicket, addMessage, getActionLogs } = useTicketStore();
   const { addNotification } = useNotificationStore();
 
   const [ticket, setTicket] = useState<Ticket | null>(null);
@@ -59,6 +59,7 @@ const TicketDetail: React.FC = () => {
   const [resolveForm] = Form.useForm();
   const [closeForm] = Form.useForm();
   const [messages, setMessages] = useState(ticket?.messages || []);
+  const [actionLogs, setActionLogs] = useState<TicketActionLog[]>([]);
 
   const loadTicket = useCallback(() => {
     if (id) {
@@ -67,12 +68,14 @@ const TicketDetail: React.FC = () => {
         setTicket(t);
         const msgs = storage.getMessagesByTicketId(id);
         setMessages(msgs);
+        const logs = getActionLogs(id);
+        setActionLogs(logs);
       } else {
         message.error('工单不存在');
         navigate('/tickets');
       }
     }
-  }, [id, getTicket, navigate]);
+  }, [id, getTicket, getActionLogs, navigate]);
 
   useEffect(() => {
     loadTicket();
@@ -82,10 +85,11 @@ const TicketDetail: React.FC = () => {
     if (!ticket || !user) return;
     setLoading(true);
     try {
-      const updated = claimTicket(ticket.id, user.id, user.name);
+      const updated = claimTicket(ticket.id, user.id, user.name, user.id, user.name, user.role);
       if (updated) {
         setTicket(updated);
         message.success('已认领该工单');
+        loadTicket();
         addNotification({
           userId: ticket.creatorId,
           title: '工单状态更新',
@@ -105,12 +109,13 @@ const TicketDetail: React.FC = () => {
     if (!ticket || !user) return;
     setLoading(true);
     try {
-      const updated = resolveTicket(ticket.id, values.resolution);
+      const updated = resolveTicket(ticket.id, values.resolution, user.id, user.name, user.role);
       if (updated) {
         setTicket(updated);
         message.success('工单已解决');
         setResolveModalVisible(false);
         resolveForm.resetFields();
+        loadTicket();
         addNotification({
           userId: ticket.creatorId,
           title: '工单已解决',
@@ -136,6 +141,7 @@ const TicketDetail: React.FC = () => {
         message.success('工单已关闭');
         setCloseModalVisible(false);
         closeForm.resetFields();
+        loadTicket();
         if (ticket.assigneeId) {
           addNotification({
             userId: ticket.assigneeId,
@@ -284,6 +290,54 @@ const TicketDetail: React.FC = () => {
           size="small"
           className="mb-6"
         />
+      </Card>
+
+      <Card title="处理记录" className="border-0 shadow-sm">
+        {actionLogs.length === 0 ? (
+          <Empty description="暂无处理记录" />
+        ) : (
+          <div className="relative pl-8">
+            {actionLogs.map((log, index) => (
+              <div key={log.id} className="relative pb-6 last:pb-0">
+                {index < actionLogs.length - 1 && (
+                  <div className="absolute left-[-24px] top-6 w-0.5 h-full bg-gray-200"></div>
+                )}
+                <div className="absolute left-[-28px] top-0 w-6 h-6 rounded-full flex items-center justify-center bg-white border-2 border-gray-300 z-10">
+                  <div className={`w-3 h-3 rounded-full ${
+                    log.action === 'created' ? 'bg-blue-500' :
+                    log.action === 'claimed' ? 'bg-cyan-500' :
+                    log.action === 'assigned' ? 'bg-purple-500' :
+                    log.action === 'resolved' ? 'bg-green-500' :
+                    log.action === 'closed' ? 'bg-gray-500' :
+                    log.action === 'batch_processed' ? 'bg-geekblue-500' :
+                    'bg-blue-400'
+                  }`}></div>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Tag color={TICKET_ACTION_COLORS[log.action]}>
+                        {TICKET_ACTION_LABELS[log.action]}
+                      </Tag>
+                      <span className="text-gray-600 font-medium">
+                        {log.operatorName}
+                      </span>
+                      <Tag color={log.operatorRole === 'admin' ? 'red' : log.operatorRole === 'engineer' ? 'blue' : 'green'}>
+                        {log.operatorRole === 'admin' ? '管理员' : log.operatorRole === 'engineer' ? '工程师' : '员工'}
+                      </Tag>
+                    </div>
+                    <span className="text-gray-400 text-sm">
+                      {dayjs(log.createdAt).format('YYYY-MM-DD HH:mm:ss')}
+                    </span>
+                  </div>
+                  <p className="text-gray-700 m-0">
+                    {log.description}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </Card>
 
       <Row gutter={[16, 16]}>

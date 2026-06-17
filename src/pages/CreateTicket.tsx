@@ -135,10 +135,35 @@ const CreateTicket: React.FC = () => {
   };
 
   const handleSelfResolved = () => {
-    Modal.success({
-      title: '问题已解决',
-      content: '很高兴知识库帮助您解决了问题！如果还有其他问题，可以继续提交工单。',
+    Modal.confirm({
+      title: '🎉 问题已解决？',
+      content: (
+        <div className="space-y-4">
+          <p>很高兴知识库帮助您解决了问题！请选择接下来的操作：</p>
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+                <BookOutlined className="text-2xl text-blue-500 mb-2" />
+                <p className="text-sm text-gray-600">返回知识库</p>
+                <p className="text-xs text-gray-400">继续浏览其他问题</p>
+              </div>
+            </div>
+            <div className="flex-1">
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
+                <SendOutlined className="text-2xl text-gray-500 mb-2" />
+                <p className="text-sm text-gray-600">继续提交</p>
+                <p className="text-xs text-gray-400">问题仍未解决</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      ),
+      okText: '返回知识库',
+      cancelText: '继续提交',
       onOk: () => {
+        navigate('/faq');
+      },
+      onCancel: () => {
         setShowRecommendations(false);
         setShowFAQDetail(null);
       },

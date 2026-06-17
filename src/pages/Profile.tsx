@@ -12,7 +12,6 @@ import {
 import { useAuthStore } from '../store/useAuthStore';
 import { useTicketStore } from '../store/useTicketStore';
 import { TICKET_TYPE_LABELS, TICKET_TYPE_COLORS, TICKET_STATUS_COLORS, TICKET_STATUS_LABELS } from '../types';
-import MainLayout from '../components/Layout/MainLayout';
 import { useNavigate } from 'react-router-dom';
 
 const Profile: React.FC = () => {
@@ -69,17 +68,14 @@ const Profile: React.FC = () => {
 
   if (!user) {
     return (
-      <MainLayout>
-        <div className="flex justify-center items-center h-96">
-          <p className="text-gray-500">请先登录</p>
-        </div>
-      </MainLayout>
+      <div className="flex justify-center items-center h-96">
+        <p className="text-gray-500">请先登录</p>
+      </div>
     );
   }
 
   return (
-    <MainLayout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <Card className="shadow-sm border-0 overflow-hidden">
           <div className="bg-gradient-to-r from-blue-500 to-purple-600 -m-6 mb-6 p-8 text-white">
             <div className="flex flex-col md:flex-row items-center gap-6">
@@ -205,8 +201,7 @@ const Profile: React.FC = () => {
             />
           )}
         </Card>
-      </div>
-    </MainLayout>
+    </div>
   );
 };
 

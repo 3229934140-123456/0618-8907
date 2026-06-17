@@ -122,17 +122,18 @@ const BatchProcess: React.FC = () => {
   };
 
   const executeBatchAction = async () => {
+    if (!user) return;
     setLoading(true);
     try {
       let result: { success: number; failed: number } | null = null;
 
       if (batchAction === 'resetPassword') {
-        result = batchResetPassword(selectedRowKeys as string[]);
+        result = batchResetPassword(selectedRowKeys as string[], user.id, user.name, user.role);
         message.success(`批量重置密码成功：${result.success} 个成功，${result.failed} 个失败`);
       } else if (batchAction === 'assign') {
         const engineer = engineers.find(e => e.id === assignEngineer);
         if (engineer) {
-          result = batchAssign(selectedRowKeys as string[], engineer.id, engineer.name);
+          result = batchAssign(selectedRowKeys as string[], engineer.id, engineer.name, user.id, user.name, user.role);
           selectedTickets.forEach(ticket => {
             addNotification({
               userId: ticket.creatorId,
@@ -145,7 +146,7 @@ const BatchProcess: React.FC = () => {
           message.success(`批量分配成功：${result.success} 个成功，${result.failed} 个失败`);
         }
       } else if (batchAction === 'close') {
-        result = batchClose(selectedRowKeys as string[]);
+        result = batchClose(selectedRowKeys as string[], user.id, user.name, user.role);
         message.success(`批量关闭成功：${result.success} 个成功，${result.failed} 个失败`);
       }
 

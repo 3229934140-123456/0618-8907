@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Ticket, TicketType, TicketStatus, TicketPriority, Message } from '../types';
+import { Ticket, TicketType, TicketStatus, TicketPriority, Message, TicketActionLog, TicketActionType } from '../types';
 import { storage } from '../services/storage';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -22,14 +22,16 @@ interface TicketState {
     creatorName: string;
   }) => Ticket;
   updateTicket: (id: string, updates: Partial<Ticket>) => Ticket | undefined;
-  claimTicket: (id: string, assigneeId: string, assigneeName: string) => Ticket | undefined;
-  assignTicket: (id: string, assigneeId: string, assigneeName: string) => Ticket | undefined;
-  resolveTicket: (id: string, resolution: string) => Ticket | undefined;
+  claimTicket: (id: string, assigneeId: string, assigneeName: string, operatorId: string, operatorName: string, operatorRole: string) => Ticket | undefined;
+  assignTicket: (id: string, assigneeId: string, assigneeName: string, operatorId: string, operatorName: string, operatorRole: string) => Ticket | undefined;
+  resolveTicket: (id: string, resolution: string, operatorId: string, operatorName: string, operatorRole: string) => Ticket | undefined;
   closeTicket: (id: string, rating?: number, comment?: string) => Ticket | undefined;
   addMessage: (ticketId: string, message: Omit<Message, 'id' | 'ticketId' | 'createdAt'>) => Message | undefined;
-  batchResetPassword: (ticketIds: string[]) => { success: number; failed: number };
-  batchAssign: (ticketIds: string[], assigneeId: string, assigneeName: string) => { success: number; failed: number };
-  batchClose: (ticketIds: string[]) => { success: number; failed: number };
+  batchResetPassword: (ticketIds: string[], operatorId: string, operatorName: string, operatorRole: string) => { success: number; failed: number };
+  batchAssign: (ticketIds: string[], assigneeId: string, assigneeName: string, operatorId: string, operatorName: string, operatorRole: string) => { success: number; failed: number };
+  batchClose: (ticketIds: string[], operatorId: string, operatorName: string, operatorRole: string) => { success: number; failed: number };
+  addActionLog: (ticketId: string, action: TicketActionType, operatorId: string, operatorName: string, operatorRole: string, description: string, oldValue?: string, newValue?: string) => void;
+  getActionLogs: (ticketId: string) => TicketActionLog[];
 }
 
 export const useTicketStore = create<TicketState>((set, get) => ({
@@ -66,6 +68,26 @@ export const useTicketStore = create<TicketState>((set, get) => ({
     return storage.getTicketById(id);
   },
 
+  addActionLog: (ticketId, action, operatorId, operatorName, operatorRole, description, oldValue, newValue) => {
+    const log: TicketActionLog = {
+      id: uuidv4(),
+      ticketId,
+      action,
+      operatorId,
+      operatorName,
+      operatorRole,
+      description,
+      oldValue,
+      newValue,
+      createdAt: new Date().toISOString(),
+    };
+    storage.addActionLog(log);
+  },
+
+  getActionLogs: (ticketId) => {
+    return storage.getActionLogsByTicketId(ticketId);
+  },
+
   createTicket: (data) => {
     const now = new Date().toISOString();
     const ticket: Ticket = {
@@ -81,8 +103,19 @@ export const useTicketStore = create<TicketState>((set, get) => ({
       updatedAt: now,
       messages: [],
       attachments: [],
+      actionLogs: [],
     };
     storage.addTicket(ticket);
+    
+    get().addActionLog(
+      ticket.id,
+      'created',
+      data.creatorId,
+      data.creatorName,
+      'employee',
+      `${data.creatorName}提交了工单`
+    );
+    
     get().fetchTickets();
     return ticket;
   },
@@ -98,34 +131,79 @@ export const useTicketStore = create<TicketState>((set, get) => ({
     return undefined;
   },
 
-  claimTicket: (id, assigneeId, assigneeName) => {
-    return get().updateTicket(id, {
+  claimTicket: (id, assigneeId, assigneeName, operatorId, operatorName, operatorRole) => {
+    const result = get().updateTicket(id, {
       assigneeId,
       assigneeName,
       status: 'processing',
     });
+    if (result) {
+      get().addActionLog(
+        id,
+        'claimed',
+        operatorId,
+        operatorName,
+        operatorRole,
+        `${operatorName}认领了工单`
+      );
+    }
+    return result;
   },
 
-  assignTicket: (id, assigneeId, assigneeName) => {
-    return get().updateTicket(id, {
+  assignTicket: (id, assigneeId, assigneeName, operatorId, operatorName, operatorRole) => {
+    const result = get().updateTicket(id, {
       assigneeId,
       assigneeName,
       status: 'assigned',
     });
+    if (result) {
+      get().addActionLog(
+        id,
+        'assigned',
+        operatorId,
+        operatorName,
+        operatorRole,
+        `${operatorName}将工单分派给${assigneeName}`
+      );
+    }
+    return result;
   },
 
-  resolveTicket: (id, resolution) => {
-    return get().updateTicket(id, {
+  resolveTicket: (id, resolution, operatorId, operatorName, operatorRole) => {
+    const result = get().updateTicket(id, {
       status: 'resolved',
       resolvedAt: new Date().toISOString(),
     });
+    if (result) {
+      get().addActionLog(
+        id,
+        'resolved',
+        operatorId,
+        operatorName,
+        operatorRole,
+        `${operatorName}标记工单已解决：${resolution}`
+      );
+    }
+    return result;
   },
 
   closeTicket: (id, rating, comment) => {
-    return get().updateTicket(id, {
+    const ticket = storage.getTicketById(id);
+    const result = get().updateTicket(id, {
       status: 'closed',
       closedAt: new Date().toISOString(),
     });
+    if (result && ticket) {
+      get().addActionLog(
+        id,
+        'closed',
+        ticket.creatorId,
+        ticket.creatorName,
+        'employee',
+        `${ticket.creatorName}确认问题已解决，关闭工单`
+      );
+    }
+    return result;
   },
 
   addMessage: (ticketId, messageData) => {
@@ -141,44 +219,103 @@ export const useTicketStore = create<TicketState>((set, get) => ({
       
       const updatedMessages = [...ticket.messages, message];
       storage.updateTicket({ ...ticket, messages: updatedMessages });
+      
+      if (messageData.type === 'text') {
+        get().addActionLog(
+          ticketId,
+          'message_sent',
+          messageData.senderId,
+          messageData.senderName,
+          messageData.senderRole,
+          `${messageData.senderName}发送了消息`
+        );
+      } else if (messageData.type === 'image' || messageData.type === 'file') {
+        get().addActionLog(
+          ticketId,
+          'attachment_uploaded',
+          messageData.senderId,
+          messageData.senderName,
+          messageData.senderRole,
+          `${messageData.senderName}上传了${messageData.type === 'image' ? '图片' : '文件'}`
+        );
+      }
+      
       get().fetchTickets();
       return message;
     }
     return undefined;
   },
 
-  batchResetPassword: (ticketIds) => {
+  batchResetPassword: (ticketIds, operatorId, operatorName, operatorRole) => {
     let success = 0;
     let failed = 0;
+    const now = new Date().toISOString();
     ticketIds.forEach(id => {
       const result = get().updateTicket(id, {
         status: 'resolved',
-        resolvedAt: new Date().toISOString(),
+        resolvedAt: now,
       });
-      if (result) success++;
-      else failed++;
+      if (result) {
+        get().addActionLog(
+          id,
+          'batch_processed',
+          operatorId,
+          operatorName,
+          operatorRole,
+          `${operatorName}通过批量处理重置了密码`
+        );
+        success++;
+      } else {
+        failed++;
+      }
     });
     return { success, failed };
   },
 
-  batchAssign: (ticketIds, assigneeId, assigneeName) => {
+  batchAssign: (ticketIds, assigneeId, assigneeName, operatorId, operatorName, operatorRole) => {
     let success = 0;
     let failed = 0;
     ticketIds.forEach(id => {
-      const result = get().assignTicket(id, assigneeId, assigneeName);
-      if (result) success++;
-      else failed++;
+      const result = get().assignTicket(id, assigneeId, assigneeName, operatorId, operatorName, operatorRole);
+      if (result) {
+        get().addActionLog(
+          id,
+          'batch_processed',
+          operatorId,
+          operatorName,
+          operatorRole,
+          `${operatorName}通过批量处理将工单分派给${assigneeName}`
+        );
+        success++;
+      } else {
+        failed++;
+      }
     });
     return { success, failed };
   },
 
-  batchClose: (ticketIds) => {
+  batchClose: (ticketIds, operatorId, operatorName, operatorRole) => {
     let success = 0;
     let failed = 0;
     ticketIds.forEach(id => {
-      const result = get().closeTicket(id);
-      if (result) success++;
-      else failed++;
+      const ticket = storage.getTicketById(id);
+      const result = get().updateTicket(id, {
+        status: 'closed',
+        closedAt: new Date().toISOString(),
+      });
+      if (result) {
+        get().addActionLog(
+          id,
+          'batch_processed',
+          operatorId,
+          operatorName,
+          operatorRole,
+          `${operatorName}通过批量处理关闭了工单`
+        );
+        success++;
+      } else {
+        failed++;
+      }
     });
     return { success, failed };
   },

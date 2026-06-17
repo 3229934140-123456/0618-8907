@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Card, Row, Col, Statistic, DatePicker, Spin } from 'antd';
+import { Card, Row, Col, Statistic, DatePicker, Spin, Button } from 'antd';
 import {
   FileTextOutlined,
   ClockCircleOutlined,
@@ -18,7 +18,6 @@ import {
   TicketPriority,
   TicketStatus,
 } from '../types';
-import MainLayout from '../components/Layout/MainLayout';
 
 const { RangePicker } = DatePicker;
 
@@ -38,6 +37,10 @@ const Statistics: React.FC = () => {
     } else {
       fetchStatistics();
     }
+  };
+
+  const handleRefresh = () => {
+    fetchStatistics();
   };
 
   const typeChartOption = {
@@ -203,19 +206,33 @@ const Statistics: React.FC = () => {
   const maxIssueCount = Math.max(...statistics.frequentIssues.map((i) => i.count), 1);
 
   return (
-    <MainLayout>
-      <div className="space-y-6">
+    <div className="space-y-6">
+      <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-6 text-white shadow-lg">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">统计分析</h1>
-            <p className="text-gray-500 mt-1">工单数据分析与趋势洞察</p>
+            <h1 className="text-2xl font-bold mb-1">📊 IT支持管理看板</h1>
+            <p className="text-blue-100">实时监控工单处理效率，识别基础设施薄弱环节</p>
           </div>
-          <RangePicker
-            defaultValue={[dayjs().subtract(30, 'day'), dayjs()]}
-            onChange={handleDateChange}
-            allowClear
-          />
+          <div className="flex items-center gap-3">
+            <RangePicker
+              defaultValue={[dayjs().subtract(30, 'day'), dayjs()]}
+              onChange={handleDateChange}
+              allowClear
+              className="bg-white/20"
+            />
+            <Button type="primary" onClick={handleRefresh}>
+              刷新数据
+            </Button>
+          </div>
         </div>
+        <div className="mt-4 pt-4 border-t border-white/20">
+          <p className="text-sm text-blue-100">
+            数据更新时间：{dayjs().format('YYYY-MM-DD HH:mm:ss')}
+            <span className="ml-4">•</span>
+            <span className="ml-4">统计周期内共处理 {statistics.totalTickets} 个工单</span>
+          </p>
+        </div>
+      </div>
 
         <Row gutter={16}>
           <Col xs={12} lg={6}>
@@ -364,8 +381,7 @@ const Statistics: React.FC = () => {
             </Row>
           </>
         )}
-      </div>
-    </MainLayout>
+    </div>
   );
 };
 

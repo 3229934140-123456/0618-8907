@@ -1,5 +1,5 @@
-import { Ticket, FAQ, Notification as NotificationType, User, Message } from '../types';
-import { mockTickets, mockFAQs, mockNotifications, mockUsers, mockMessages } from '../mock/data';
+import { Ticket, FAQ, Notification as NotificationType, User, Message, TicketActionLog } from '../types';
+import { mockTickets, mockFAQs, mockNotifications, mockUsers, mockMessages, mockActionLogs } from '../mock/data';
 
 const STORAGE_KEYS = {
   TICKETS: 'it_helpdesk_tickets',
@@ -8,6 +8,7 @@ const STORAGE_KEYS = {
   CURRENT_USER: 'it_helpdesk_current_user',
   USERS: 'it_helpdesk_users',
   MESSAGES: 'it_helpdesk_messages',
+  ACTION_LOGS: 'it_helpdesk_action_logs',
 };
 
 export const storage = {
@@ -26,6 +27,9 @@ export const storage = {
     }
     if (!localStorage.getItem(STORAGE_KEYS.MESSAGES)) {
       localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(mockMessages));
+    }
+    if (!localStorage.getItem(STORAGE_KEYS.ACTION_LOGS)) {
+      localStorage.setItem(STORAGE_KEYS.ACTION_LOGS, JSON.stringify(mockActionLogs));
     }
   },
 
@@ -127,6 +131,39 @@ export const storage = {
   getMessagesByTicketId(ticketId: string): Message[] {
     const messages = this.getMessages();
     return messages.filter(m => m.ticketId === ticketId);
+  },
+
+  getActionLogs(): TicketActionLog[] {
+    const data = localStorage.getItem(STORAGE_KEYS.ACTION_LOGS);
+    return data ? JSON.parse(data) : [];
+  },
+
+  saveActionLogs(logs: TicketActionLog[]) {
+    localStorage.setItem(STORAGE_KEYS.ACTION_LOGS, JSON.stringify(logs));
+  },
+
+  addActionLog(log: TicketActionLog) {
+    const logs = this.getActionLogs();
+    logs.unshift(log);
+    this.saveActionLogs(logs);
+    
+    const tickets = this.getTickets();
+    const ticketIndex = tickets.findIndex(t => t.id === log.ticketId);
+    if (ticketIndex !== -1) {
+      const ticket = tickets[ticketIndex];
+      if (!ticket.actionLogs) {
+        ticket.actionLogs = [];
+      }
+      ticket.actionLogs.unshift(log);
+      this.saveTickets(tickets);
+    }
+  },
+
+  getActionLogsByTicketId(ticketId: string): TicketActionLog[] {
+    const logs = this.getActionLogs();
+    return logs.filter(l => l.ticketId === ticketId).sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
   },
 
   clearAll() {

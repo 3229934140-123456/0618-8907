@@ -3,7 +3,6 @@ import { Card, Input, Tag, Space, Empty, Button, message, Tabs, Statistic, Row, 
 import { SearchOutlined, LikeOutlined, EyeOutlined, BookOutlined } from '@ant-design/icons';
 import { useFAQStore } from '../store/useFAQStore';
 import { FAQ, TICKET_TYPE_LABELS, TICKET_TYPE_COLORS, TicketType } from '../types';
-import MainLayout from '../components/Layout/MainLayout';
 
 const { Search } = Input;
 const { Meta } = Card;
@@ -56,8 +55,7 @@ const FAQList: React.FC = () => {
   const topFAQs = [...faqs].sort((a, b) => b.viewCount - a.viewCount).slice(0, 5);
 
   return (
-    <MainLayout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl p-8 text-white shadow-lg">
           <div className="flex items-center gap-4 mb-4">
             <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center">
@@ -216,8 +214,7 @@ const FAQList: React.FC = () => {
             </Card>
           </Col>
         </Row>
-      </div>
-    </MainLayout>
+    </div>
   );
 };
 

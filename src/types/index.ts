@@ -53,6 +53,7 @@ export interface Ticket {
   closedAt?: string;
   messages: Message[];
   attachments: Attachment[];
+  actionLogs: TicketActionLog[];
 }
 
 export interface FAQ {
@@ -65,6 +66,32 @@ export interface FAQ {
   likeCount: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export type TicketActionType = 
+  | 'created'
+  | 'assigned'
+  | 'claimed'
+  | 'started'
+  | 'resolved'
+  | 'closed'
+  | 'reopened'
+  | 'priority_changed'
+  | 'batch_processed'
+  | 'message_sent'
+  | 'attachment_uploaded';
+
+export interface TicketActionLog {
+  id: string;
+  ticketId: string;
+  action: TicketActionType;
+  operatorId: string;
+  operatorName: string;
+  operatorRole: string;
+  description: string;
+  oldValue?: string;
+  newValue?: string;
+  createdAt: string;
 }
 
 export interface Notification {
@@ -140,4 +167,32 @@ export const TICKET_PRIORITY_COLORS: Record<TicketPriority, string> = {
   medium: 'blue',
   high: 'orange',
   urgent: 'red',
+};
+
+export const TICKET_ACTION_LABELS: Record<TicketActionType, string> = {
+  created: '创建工单',
+  assigned: '分派工单',
+  claimed: '认领工单',
+  started: '开始处理',
+  resolved: '标记解决',
+  closed: '关闭工单',
+  reopened: '重新打开',
+  priority_changed: '修改优先级',
+  batch_processed: '批量处理',
+  message_sent: '发送消息',
+  attachment_uploaded: '上传附件',
+};
+
+export const TICKET_ACTION_COLORS: Record<TicketActionType, string> = {
+  created: 'blue',
+  assigned: 'purple',
+  claimed: 'cyan',
+  started: 'processing',
+  resolved: 'success',
+  closed: 'default',
+  reopened: 'orange',
+  priority_changed: 'orange',
+  batch_processed: 'geekblue',
+  message_sent: 'blue',
+  attachment_uploaded: 'purple',
 };
